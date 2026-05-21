@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 function ReportForm() {
   const [name, setName] = useState('')
@@ -7,53 +8,58 @@ function ReportForm() {
   const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [message, setMessage] = useState('')
+  const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setMessage('Submitting...')
 
     try {
-        let photoKey = ''
+      let photoKey = ''
 
-        if (photo) {
-          // Step 1: Get presigned URL
-          const urlRes = await fetch(`${import.meta.env.VITE_API_URL}/upload-url`)
-          const urlData = await urlRes.json()
-          const { uploadUrl, photoKey: key } = typeof urlData.body === 'string'
-              ? JSON.parse(urlData.body)
-              : urlData
+      if (photo) {
+        const urlRes = await fetch(`${import.meta.env.VITE_API_URL}/upload-url`)
+        const urlData = await urlRes.json()
+        const { uploadUrl, photoKey: key } = typeof urlData.body === 'string'
+          ? JSON.parse(urlData.body)
+          : urlData
 
-          // Step 2: Upload photo directly to S3
-          await fetch(uploadUrl, {
-              method: 'PUT',
-              body: photo
-          })
-
-          photoKey = key
-        }
-
-        // Step 3: Submit report with photoKey
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/report`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, location, category, description, photoKey })
+        await fetch(uploadUrl, {
+          method: 'PUT',
+          body: photo
         })
 
-        const raw = await response.json()
-        const data = typeof raw.body === 'string' ? JSON.parse(raw.body) : raw
-        setMessage('Report submitted successfully! ID: ' + data.reportId)
+        photoKey = key
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, location, category, description, photoKey })
+      })
+
+      const raw = await response.json()
+      const data = typeof raw.body === 'string' ? JSON.parse(raw.body) : raw
+      setMessage('Report submitted successfully! ID: ' + data.reportId)
     } catch (error) {
-        setMessage('Something went wrong. Please try again.')
-        console.error(error)
+      setMessage('Something went wrong. Please try again.')
+      console.error(error)
     }
-    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      {/* Admin Login button */}
+      <button
+        onClick={() => navigate('/admin')}
+        className="fixed top-4 right-4 text-xs text-gray-400 hover:text-gray-600 underline"
+      >
+        Admin Login
+      </button>
+
       <div className="bg-white rounded-2xl shadow-md w-full max-w-md p-6">
         <h1 className="text-2xl font-bold text-center text-black mb-6">Report an Estate Problem</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
             <input
